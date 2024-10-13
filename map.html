@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/map.css' %}">
+   <title>Google Maps Integration</title>
+
+   <style>
+       body, html {
+           height: 100%;
+           margin: 0;
+           padding: 0;
+           font-family: Arial, sans-serif;
+       }
+
+       .container {
+           display: flex;
+           height: calc(100% - 60px);
+       }
+       #map {
+           flex: 6;
+           height: 100%;
+       }
+       .search-panel {
+           flex: 4;
+           height: 100%;
+           overflow-y: auto;
+           padding: 20px;
+           box-sizing: border-box;
+           background-color: #5F3830;
+       }
+       .search-input {
+           width: 100%;
+           padding: 10px;
+           margin-bottom: 10px;
+           box-sizing: border-box;
+       }
+       .restaurant-card {
+           cursor: pointer;
+           margin-bottom: 10px;
+           padding: 10px;
+           border: 1px solid #ddd;
+           border-radius: 4px;
+           background-color: #F0E7D7;
+           transition: all 0.3s ease;
+       }
+       .restaurant-card img {
+           width: 80px;
+           height: 80px;
+           object-fit: cover;
+           float: right;
+           margin-left: 10px;
+       }
+       .popup {
+        display: none;
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        background-color: #F0E7D7;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+        max-width: 400px; /* Adjust maximum width here */
+        width: 80%; /* Allow pop-up to take up to 90% of the viewport width */
+        overflow-y: auto;
+       }
+       .popup-close {
+           position: absolute;
+           right: 10px;
+           top: 10px;
+           cursor: pointer;
+           font-size: 20px;
+       }
+       .popup-content {
+           cursor: pointer;
+           padding: 10px;
+       }
+
+       .rating {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+       }
+
+        .stars {
+            margin-left: 5px; /* Space between rating text and stars */
+        }
+
+        .star {
+        font-size: 20px; /* Adjust size as needed */
+        }
+
+        .star.filled {
+        color: gold; /* Color for filled stars */
+        }
+
+        .favorite-button {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+    .favorite-button button {
+        padding: 10px 15px;
+        border: none;
+        border-radius: 5px;
+        background-color: black; /* Blue background */
+        color: white; /* White text */
+        cursor: pointer;
+        font-size: 14px; /* Font size */
+        transition: background-color 0.3s; /* Smooth transition for hover effect */
+    }
+
+    .favorite-button button:hover {
+        background-color: #4D1F1A; /* Darker blue on hover */
+    }
+
+       .highlighted-card {
+           border: 2px solid #007bff;
+           box-shadow: 0 0 10px rgba(0,123,255,0.5);
+       }
+       .user-controls {
+           position: absolute;
+           top: 10px;
+           right: 20px;
+           display: flex;
+           gap: 10px;
+           border: 2px;
+           border-radius: 5px; /* Rounded corners */
+
+       }
+       .user-controls a {
+           padding: 5px 10px;
+           background-color: black;
+           color: white;
+           text-decoration: none;
+           border-radius: 3px;
+       }
+
+       .user-controls a:hover {
+         background-color: #4D1F1A; /* Darker shade for hover */
+}
+       .user-greeting {
+           position: absolute;
+           top: 10px;
+           left: 20px;
+           font-size: 14px;
+       }
+       #favorites {
+           list-style-type: none;
+           padding: 0;
+       }
+       #favorites li {
+           margin-bottom: 5px;
+       }
+
+       .favorite-container {
+        margin-top: 20px;
+    }
+
+    .favorite-title {
+        font-size: 1.5em;
+        margin-bottom: 10px;
+        color: #C0A08A; /* Color for the title */
+    }
+
+    .favorite-card {
+        display: flex;
+        align-items: center;
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background-color: #93a1a1;
+        transition: box-shadow 0.3s;
+    }
+
+    .favorite-card:hover {
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Shadow effect on hover */
+    }
+
+    .favorite-image {
+        width: 50px;
+        height: 50px;
+        object-fit: cover;
+        border-radius: 5px;
+        margin-right: 10px; /* Space between image and text */
+    }
+
+    .favorite-name {
+        flex-grow: 1; /* Takes up remaining space */
+    }
+
+    .favorite-remove {
+        cursor: pointer;
+        color: #dc3545; /* Bootstrap danger color for remove */
+        font-weight: bold;
+        padding-left: 10px;
+    }
+    
+    .form-group {
+        margin-bottom: 15px;
+        color: white;
+    }
+
+.form-label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.form-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    transition: border-color 0.3s;
+}
+
+.form-input:focus {
+    border-color: #007bff;
+    outline: none;
+}
+
+.btn-search {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    background-color: black; /* Primary color */
+    color: white;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+
+.btn-search:hover {
+    background-color: #0056b3; /* Darker shade for hover */
+}
+   </style>
+
+   
+</head>
+<body onload="initMap()">
+<header class="header">
+    <h1>Restaurant Finder</h1>
+{#    <div class="user-greeting">#}
+{#        <span>Hello, {{ fname }}</span>#}
+{#    </div>#}
+    <div class="user-controls">
+        <a href="{% url 'account' %}" class="account-button">View my Profile</a>
+        <a href="{% url 'logout' %}" class="logout-button">Log Out</a>
+    </div>
+</header>
+
+<div class="container">
+    <div id="map"></div>
+    <div class="search-panel">
+        <form id="search-form" method="post">
+            {% csrf_token %}
+
+            <div class="form-group">
+            <input type="text" name="query" id="search-input" class="search-input" placeholder="Search for restaurants..." value="{{ form.query.value|default:'' }}" aria-label="Search for restaurants" onkeypress="if(event.key === 'Enter') { event.preventDefault(); searchRestaurants(); }">
+        </div>
+            <div class="form-group">
+                <label for="{{ form.rating.id_for_label }}">Minimum Rating:</label>
+                {{ form.rating }}
+            </div>
+            <div class="form-group">
+                <label for="{{ form.distance.id_for_label }}">Maximum Distance:</label>
+                {{ form.distance }}
+            </div>
+            <button class= "searching-button" type="button" onclick="searchRestaurants()">Search</button>
+        </form>
+        <div id="restaurant-list"></div>
+        <div class="favorite-container">
+            <h2 class="favorite-title">Your Favorites:</h2>
+            <ul id="favorites"></ul>
+        </div>
+    </div>
+</div>
+
+<template id="restaurant-card-template">
+    <div class="restaurant-card">
+        <img src="" alt="Restaurant Image">
+        <div class="restaurant-name"></div>
+        <div class="restaurant-rating"></div>
+        <div class="restaurant-address"></div>
+        <div class="restaurant-description"></div>
+    </div>
+</template>
+
+<div id="popup" class="popup"></div>
+
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places" async defer></script>
+   <script type="text/javascript">
+       let map;
+       let service;
+       let infoWindow;
+       let markers = [];
+       let favorites = [];
+
+       function initMap() {
+           var location = {lat: 33.7833, lng: -84.3831};
+           map = new google.maps.Map(document.getElementById('map'), {
+               zoom: 14,
+               center: location
+           });
+
+           infoWindow = new google.maps.InfoWindow();
+           service = new google.maps.places.PlacesService(map);
+
+           if (navigator.geolocation) {
+               navigator.geolocation.getCurrentPosition(function(position) {
+                   var pos = {
+                       lat: position.coords.latitude,
+                       lng: position.coords.longitude
+                   };
+
+                   map.setCenter(pos);
+                   var userMarker = new google.maps.Marker({
+    position: pos,
+    map: map,
+    icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        fillColor: 'blue',
+        fillOpacity: 1,
+        strokeWeight: 1,
+        strokeColor: 'white',
+        scale: 10
+    }
+});
+
+// Create an InfoWindow
+var infoWindow = new google.maps.InfoWindow({
+    content: "You are here",
+});
+
+
+ // Add click event to the marker to open the InfoWindow
+ userMarker.addListener('click', function() {
+     infoWindow.open(map, userMarker);
+ });
+
+                   fetchNearbyRestaurants(pos);
+               }, function() {
+                   handleLocationError(true, infoWindow, map.getCenter());
+               });
+           } else {
+               handleLocationError(false, infoWindow, map.getCenter());
+           }
+
+           document.getElementById('search-input').addEventListener('keypress', function(e) {
+               if (e.key === 'Enter') {
+                   searchRestaurants(e.target.value);
+               }
+           });
+
+           loadFavorites();
+       }
+
+       function handleLocationError(browserHasGeolocation, infoWindow, pos) {
+           infoWindow.setPosition(pos);
+           infoWindow.setContent(browserHasGeolocation ?
+               'Error: The Geolocation service failed.' :
+               'Error: Your browser doesn\'t support geolocation.');
+           infoWindow.open(map);
+       }
+
+       function fetchNearbyRestaurants(location) {
+           clearMarkers();
+           service.nearbySearch({
+               location: location,
+               radius: 5000, // 5 km
+               type: ['restaurant']
+           }, function(results, status) {
+               if (status === google.maps.places.PlacesServiceStatus.OK) {
+                   for (var i = 0; i < results.length; i++) {
+                       createMarker(results[i]);
+                   }
+                   populateRestaurantCards(results);
+               }
+           });
+       }
+
+        function searchRestaurants() {
+            clearMarkers();
+
+            getUserLocation().then(userLocation => {
+                var form = document.getElementById('search-form');
+                var formData = new FormData(form);
+
+                formData.append('user_lat', userLocation.lat);
+                formData.append('user_lng', userLocation.lng);
+
+                fetch('/map/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Received data:', data);  // Log the entire response
+                    if (data.search_results) {
+                        console.log('Search results:', data.search_results);  // Log the search results
+                        data.search_results.forEach(place => {
+                            console.log('Place:', place);  // Log each place
+                            createMarker(place);
+                        });
+                        populateRestaurantCards(data.search_results);
+                    } else {
+                        console.error('No search results returned from the server');
+                        document.getElementById('restaurant-list').innerHTML = '<p>No restaurants found.</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('restaurant-list').innerHTML = '<p>An error occurred while searching for restaurants.</p>';
+                });
+            }).catch(error => {
+                console.error('Error getting user location:', error);
+                document.getElementById('restaurant-list').innerHTML = '<p>Unable to get your location. Please enable location services and try again.</p>';
+            });
+        }
+        // Function to get CSRF token
+        function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            // Does this cookie string begin with the name we want?
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+               function createMarker(place) {
+           var marker = new google.maps.Marker({
+               map: map,
+               position: place.geometry.location,
+               title: place.name
+           });
+
+           markers.push(marker);
+
+           google.maps.event.addListener(marker, 'click', function() {
+               getPlaceDetails(place, function(placeDetails) {
+                   showPopup(placeDetails);
+               });
+           });
+       }
+
+       function clearMarkers() {
+           markers.forEach(marker => marker.setMap(null));
+           markers = [];
+       }
+
+    function getUserLocation() {
+        return new Promise((resolve, reject) => {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    position => {
+                        resolve({
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        });
+                    },
+                    error => {
+                        console.error("Error getting user location:", error);
+                        reject(error);
+                    }
+                );
+            } else {
+                reject(new Error("Geolocation is not supported by this browser."));
+            }
+        });
+    }
+        function populateRestaurantCards(results) {
+            const restaurantList = document.getElementById('restaurant-list');
+            const template = document.getElementById('restaurant-card-template');
+
+            restaurantList.innerHTML = '';
+
+            results.forEach(place => {
+                const card = template.content.cloneNode(true);
+                const cardElement = card.querySelector('.restaurant-card');
+
+                cardElement.setAttribute('data-place-id', place.place_id);
+                cardElement.querySelector('.restaurant-name').textContent = place.name;
+                cardElement.querySelector('.restaurant-rating').textContent = `${place.rating || 'N/A'} ★`;
+                cardElement.querySelector('.restaurant-address').textContent = place.vicinity || place.formatted_address || 'Address not available';
+                //cardElement.querySelector('.restaurant-description').textContent = place.types ? place.types.join(', ') : 'No description available';
+
+                const imgElement = cardElement.querySelector('img');
+                if (place.photos && place.photos.length > 0 && typeof place.photos[0].getUrl === 'function') {
+                    imgElement.src = place.photos[0].getUrl();
+                } else if (place.photos && place.photos.length > 0 && place.photos[0].photo_reference) {
+                    imgElement.src = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${place.photos[0].photo_reference}&key={{ google_maps_api_key }}`;
+                } else if (place.photo_reference) {
+                    imgElement.src = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${place.photo_reference}&key={{ google_maps_api_key }}`;
+                } else {
+                    imgElement.src = 'https://via.placeholder.com/150?text=No+Image';
+                }
+
+                cardElement.addEventListener('click', function() {
+                    getPlaceDetails(place, function(placeDetails) {
+                        showPopup(placeDetails);
+                    });
+                });
+
+                restaurantList.appendChild(cardElement);
+            });
+
+            if (results.length === 0) {
+                restaurantList.innerHTML = '<p>No restaurants found.</p>';
+            }
+        }
+       function getPlaceDetails(place, callback) {
+           service.getDetails({ placeId: place.place_id }, function(placeDetails, status) {
+               if (status === google.maps.places.PlacesServiceStatus.OK) {
+                   callback(placeDetails);
+               }
+           });
+       }
+       
+       
+       function showPopup(place) {
+           loadFavorites();
+           const italian = ["ChIJX973788F9YgR0EDNzkfhmRY","ChIJg0330TQF9YgRGzpKxX21dQg", "ChIJD8nPll4F9YgRljdGdCq69Io", "ChIJaU_5DHoE9YgRZ6C9Mxbyftk", "ChIJVVVFN44E9YgRe-aC1CC_NAw", "ChIJi-A6w5UF9YgRUQXQ2AOpkj8", "ChIJAensEPgD9YgR8IPvfkTENUM"]
+           const chinese = ["ChIJBWTGEHgE9YgRsxHzq3LxxzQ", "ChIJ1Vn8rKoF9YgRB88SbQBbbMM", "ChIJvZaDr3YF9YgRXzVzIFDAvdk", "ChIJZceakjME9YgRyZwdxYPM6uM", "ChIJwWNQxHEE9YgRCjuVoqKbVhU", " ChIJv6Bz0vIE9YgR_oFjB1vJ3r0", "ChIJnaLavCAF9YgRPHNKDesn_68", "ChIJq-YA7RAE9YgRRqqCgSJCsG0"]
+           const american = ["ChIJWWUM7mQE9YgRuP3jMWQO-uI", "ChIJQ-icamgE9YgR5x6mB7gMOR0", "ChIJgUolJWwE9YgRnxg5IduXOsg", "ChIJd1yZdewE9YgReD9t-jO662U", "ChIJpwdZ0AcE9YgR4Y8mHDdrygo", "ChIJV1QMS-sE9YgR0bCLgwLEWhY", "ChIJvQqtX0ME9YgR-X6ukvNSt6I", "ChIJNwFLfVsE9YgRrkOBaigMzhI", "ChIJh2rE12cE9YgRUvRZSZmo4h4"]
+           const mexican = ["ChIJ_3B7nUIE9YgRvJ3CWb9asWo", "ChIJSd4kc3gE9YgRq6HkvZcW-cw", "ChIJyWNE-mgE9YgR1thAVNnhDpc", "ChIJNaeX0RAE9YgRyROTgp93Rbk", "ChIJPZ--sdoE9YgRLp5GjVlehNs", "ChIJZyjICBYE9YgRE9cpHUNmN0Q", "ChIJU_XZ8QIF9YgRDECdtrHYoTQ", "ChIJ2aXXdscF9YgRhZBjvJsyews", "ChIJCztBntwF9YgRaraSa1SOtus", "ChIJA8WxaA8F9YgRYjlJmZJTJf8", "ChIJM0Z60uoF9YgR9J-9ylERcAk", "ChIJAfuXyMUE9YgRBM9FUaVQyuw"]
+           const indian = ["ChIJoRRnZgAF9YgR8qi2rD-oyN8", "ChIJLaLUe2ID9YgR3BZgYMNttzQ", "ChIJd8OzDgAF9YgRz7RmEEXSnn8", "ChIJr2ntQ0wD9YgRzLlzJ-PDtPs", "ChIJy2govhAE9YgRyqfK_NJPaQQ"]
+           const pub_bar = ["ChIJm8uX1X8E9YgR2Acbx-2xMZ4", "ChIJweczQWYE9YgRvtwgBTj9cUU", "ChIJ6V-08HkE9YgRvZopWFm3U4w", "ChIJx74fE3AE9YgRoxMa6Sh7FVQ", "ChIJw23jdm8E9YgRn1HODnsUFxE"]
+           const european = ["ChIJlyVS2WcE9YgR2EM86Kf9aRY"]
+           const cuisines = [italian, chinese, american, mexican, indian, pub_bar, european]
+           const cuisine_names = ["Italian", "Chinese", "American", "Mexican", "Indian", "Bar/Pub", "European"]
+           const fast_food = ["McDonald's", "Panda Express", "Papa Johns Pizza", "Chick-fil-A", "Subway"]
+var cuisine = "Unknown"
+           var found = false
+           for (let i = 0; i < cuisines.length; i++) {
+                for (let j = 0; j < cuisines[i].length; j++) {
+                    if (cuisines[i][j] === String(place.place_id)) {
+                        cuisine = cuisine_names[i];
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) {
+                    break;
+                }
+            }
+           if (!found) {
+               for (let i = 0; i < cuisines.length; i++) {
+                   if (fast_food[i] === String(place.name)) {
+                       cuisine = "Fast Food"
+                   }
+               }
+           }
+           const popup = document.getElementById('popup');
+           const isFavorite = favorites.some(fav => fav.id === place.place_id);
+           const starRating = generateStars(place.rating);
+           
+           name = place.name.replace("'", "&lsquo;");
+           
+           popup.innerHTML = `
+               <span class="popup-close" onclick="closePopup()">×</span>
+               <div class="popup-content">
+                   <h2><u>${place.name}</u></h2>
+                   <div class="rating">
+                        <span>${place.rating ? place.rating.toFixed(1) : 'N/A'} / 5</span>
+                        <div class="stars">${starRating}</div> <!-- Stars displayed here -->
+                   </div>
+                   <p><strong>Address:</strong> ${place.formatted_address || 'No address available'}</p>
+                   <p><strong>Phone:</strong> ${place.formatted_phone_number || 'No phone number available'}</p>
+                   {#<p><strong>Rating:</strong> ${place.rating || 'N/A'} / 5</p>#}
+                   <p><strong>Cuisine:</strong> ${cuisine}</p
+                   <p"><a href="${place.url}" target="_blank">View on Google Maps</a></p>
+                   <div class ="favorite-button">
+                       ${isFavorite ?
+                   `<button onclick="removeFavorite('${place.place_id}', '${name}', '${place.address}', '12', '${place.longitude}', '${place.rating}', '${place.type}')">Remove from Favorites</button>` :
+                   `<button onclick="addFavorite('${place.place_id}', '${name}', '${place.address}', '12', '${place.longitude}', '${place.rating}', '${place.type}')">Add to Favorites</button>`
+               }
+                    </div>
+               </div>
+           `;
+           popup.style.display = 'block';
+
+           // Add click event to the entire popup content
+           popup.querySelector('.popup-content').addEventListener('click', function () {
+               highlightCard(place.place_id);
+           });
+
+           function closePopup() {
+               document.getElementById('popup').style.display = 'none';
+           }
+
+           function highlightCard(placeId) {
+               const cards = document.querySelectorAll('.restaurant-card');
+               let targetCard = null;
+
+               cards.forEach(card => {
+                   if (card.getAttribute('data-place-id') === placeId) {
+                       targetCard = card;
+                       card.classList.add('highlighted-card');
+                   } else {
+                       card.classList.remove('highlighted-card');
+                   }
+               });
+
+               if (targetCard) {
+                   const parent = targetCard.parentNode;
+                   parent.insertBefore(targetCard, parent.firstChild);
+
+                   setTimeout(() => {
+                       targetCard.scrollIntoView({behavior: 'smooth', block: 'start'});
+                   }, 100);
+               }
+    
+                   closePopup();
+               }
+       }
+       
+       // Move the closePopup function outside
+        function closePopup() {
+            document.getElementById('popup').style.display = 'none';
+        }
+
+       function generateStars(rating) {
+            const totalStars = 5;
+            let starsHTML = '';
+
+            const starRating = Math.max(0, Math.min(totalStars, Math.round(rating))); // Adjusting to ensure proper star count
+
+            for (let i = 1; i <= totalStars; i++) {
+                starsHTML += i <= starRating ? '<span class="star filled">★</span>' : '<span class="star">☆</span>'; // Filled or empty star
+            }
+
+            return starsHTML;
+        }
+
+       function addFavorite(restaurantId, restaurantName, restaurantAddress, restaurantLatitude, restaurantLongitude, restaurantRating, restaurantType) {
+           if (!favorites.some(fav => fav.id === restaurantId)) {
+               favorites.push({ id: restaurantId, name: restaurantName });
+               updateFavoritesUI();
+           }
+           fetch('/api/favorites/add/', {
+               method: 'POST', 
+               headers: {
+                   'Content-Type': 'application/json', 
+                   'X-CSRFToken': getCookie('csrftoken')  // Ensure this is correctly retrieved
+                   }, 
+               body: JSON.stringify({ restaurant_id: restaurantId, restaurant_name: restaurantName, restaurant_address: restaurantAddress, restaurant_latitude : restaurantLatitude, restaurant_longitude : restaurantLongitude })
+           })
+               .then(response => response.json())
+               .then(data => {
+                   console.log(data.message);
+               })
+               .catch(error => {
+                   console.error('Error adding favorite:', error);
+               });
+       }
+
+       function removeFavorite(restaurantId) {
+           favorites = favorites.filter(fav => fav.id !== restaurantId);
+           updateFavoritesUI();
+            
+           fetch(`/api/favorites/remove/${restaurantId}/`, {
+               method: 'DELETE',
+               headers: {
+                   'X-CSRFToken': getCookie('csrftoken')
+               }
+           })
+           .then(response => response.json())
+           .then(data => {
+               console.log(data.message);
+           })
+           .catch(error => {
+               console.error('Error removing favorite:', error);
+           });
+       }
+       
+
+       function loadFavorites() {
+           fetch('/api/favorites/list/')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Assuming data contains an array of favorite objects with restaurant_id and restaurant_name
+            favorites = data.map(fav => ({
+                id: fav.restaurant_id,
+                name: fav.restaurant_name,
+            }));
+            console.log(favorites + ": favorites")
+            updateFavoritesUI();
+        })
+        .catch(error => {
+            console.error('Error loading favorites:', error);
+        });
+}
+
+function updateFavoritesUI() {
+    const favoritesContainer = document.getElementById('favorites');
+    favoritesContainer.innerHTML = '';  // Clear existing favorites
+
+    if (favorites.length === 0) {
+        favoritesContainer.innerHTML = '<li>No favorites added.</li>';
+        return;
+    }
+
+    favorites.forEach(fav => {
+        const listItem = document.createElement('li');
+        listItem.className = 'favorite-card';
+
+        const name = document.createElement('span');
+        name.className = 'favorite-name';
+        name.textContent = fav.name;
+
+        const removeButton = document.createElement('span');
+        removeButton.className = 'favorite-remove';
+        removeButton.textContent = 'Remove';
+        removeButton.onclick = () => removeFavorite(fav.id);  // Link to the remove function
+
+        listItem.appendChild(name);
+        listItem.appendChild(removeButton);
+
+        favoritesContainer.appendChild(listItem);
+    });
+}
+
+   </script>
+</body>
+</html>
